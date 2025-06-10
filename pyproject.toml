@@ -1,0 +1,20 @@
+[project]
+name = "teris"
+version = "0.1.0"
+description = "A Tetris game implementation using Python and Pygame"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pygame>=2.5.0",
+    "pyglet>=2.0.0"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
