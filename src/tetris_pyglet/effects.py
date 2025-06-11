@@ -309,11 +309,11 @@ class ExplosionEffect:
         return shapes_list
 
 
-class LineEffect:
-    """Advanced line clearing effect with waves and particles."""
+class LineExplosionEffect:
+    """Advanced line clearing effect with explosive chain reaction."""
     
     def __init__(self, line_y: int, board_x: int, board_y: int):
-        """Initialize line effect.
+        """Initialize line explosion effect.
         
         Args:
             line_y: Line index being cleared
@@ -324,47 +324,48 @@ class LineEffect:
         self.board_x = board_x
         self.board_y = board_y
         self.progress = 0.0
-        self.duration = 0.5
+        self.duration = 3.0  # Total duration of line explosion (increased to accommodate longer chain)
         self.active = True
         
         # Calculate line position in pixels
         self.pixel_y = board_y + (BOARD_HEIGHT - 1 - line_y) * CELL_SIZE
         
-        # Create particles along the line
-        self.particles: List[Particle] = []
-        self._create_line_particles()
+        # Explosion effects along the line
+        self.explosions: List[ExplosionEffect] = []
+        self.explosion_timers: List[float] = []
+        self._create_explosion_chain()
     
-    def _create_line_particles(self) -> None:
-        """Create particles along the clearing line."""
-        # Create particles across the width of the board
-        for x in range(BOARD_WIDTH * 2):  # More particles for smoother effect
-            pixel_x = self.board_x + (x / 2) * CELL_SIZE
+    def _create_explosion_chain(self) -> None:
+        """Create a chain of explosions along the line."""
+        # Create explosions at each block position
+        for x in range(BOARD_WIDTH):
+            pixel_x = self.board_x + (x + 0.5) * CELL_SIZE
             
-            # Random upward velocity
-            vx = random.uniform(-50, 50)
-            vy = random.uniform(100, 200)
+            # Stagger explosion timing for chain effect
+            delay = x * 0.15  # 150ms delay between each explosion for more visible chain effect
+            self.explosion_timers.append(delay)
             
-            life = random.uniform(0.3, 0.8)
-            size = random.uniform(2, 6)
-            
-            # Bright clearing colors
-            colors = [
-                COLORS['YELLOW'],
-                COLORS['WHITE'],
-                COLORS['CYAN'],
-                (255, 255, 200, 255)  # Bright yellow-white
+            # Create explosion with random color variation
+            explosion_colors = [
+                COLORS['RED'],
+                COLORS['YELLOW'], 
+                COLORS['ORANGE'],
+                (255, 150, 0, 255),  # Orange-red
+                (255, 100, 100, 255)  # Light red
             ]
-            color = random.choice(colors)
+            color = random.choice(explosion_colors)
             
-            particle = Particle(
-                pixel_x, self.pixel_y, vx, vy, life, color, size
+            # Higher intensity for more dramatic effect
+            intensity = random.uniform(1.2, 1.8)
+            
+            explosion = ExplosionEffect(
+                pixel_x, self.pixel_y, color, intensity
             )
-            particle.gravity *= 0.7  # Less gravity for line particles
-            
-            self.particles.append(particle)
+            explosion.active = False  # Start inactive, will be activated by timer
+            self.explosions.append(explosion)
     
     def update(self, dt: float) -> bool:
-        """Update line effect.
+        """Update line explosion effect.
         
         Args:
             dt: Delta time in seconds
@@ -377,17 +378,31 @@ class LineEffect:
         
         self.progress += dt / self.duration
         
-        # Update particles
-        self.particles = [p for p in self.particles if p.update(dt)]
+        # Activate explosions based on timers
+        for i, timer in enumerate(self.explosion_timers):
+            if timer > 0:
+                self.explosion_timers[i] -= dt
+                if self.explosion_timers[i] <= 0:
+                    self.explosions[i].active = True
         
-        # Effect is done when progress is complete and particles are gone
-        if self.progress >= 1.0 and not self.particles:
+        # Update active explosions
+        active_explosions = []
+        for explosion in self.explosions:
+            if explosion.active and explosion.update(dt):
+                active_explosions.append(explosion)
+            elif not explosion.active:
+                active_explosions.append(explosion)
+        self.explosions = active_explosions
+        
+        # Effect is done when all explosions are complete
+        all_explosions_done = all(not exp.active for exp in self.explosions)
+        if self.progress >= 1.0 and all_explosions_done:
             self.active = False
         
         return self.active
     
     def draw(self, batch: pyglet.graphics.Batch, group: pyglet.graphics.Group) -> List:
-        """Draw line effect.
+        """Draw line explosion effect.
         
         Args:
             batch: Pyglet batch for rendering
@@ -398,25 +413,10 @@ class LineEffect:
         """
         shapes_list = []
         
-        # Draw wave effect
-        if self.progress < 1.0:
-            wave_width = self.progress * BOARD_WIDTH * CELL_SIZE
-            wave_height = 4
-            wave_alpha = int(255 * (1.0 - self.progress))
-            
-            if wave_alpha > 0:
-                wave_rect = shapes.Rectangle(
-                    self.board_x, self.pixel_y - wave_height // 2,
-                    wave_width, wave_height,
-                    color=COLORS['YELLOW'][:3],
-                    batch=batch, group=group
-                )
-                wave_rect.opacity = wave_alpha
-                shapes_list.append(wave_rect)
-        
-        # Draw particles
-        for particle in self.particles:
-            shapes_list.extend(particle.draw(batch, group))
+        # Draw all active explosions
+        for explosion in self.explosions:
+            if explosion.active:
+                shapes_list.extend(explosion.draw(batch, group))
         
         return shapes_list
 
@@ -427,7 +427,7 @@ class PygletEffectsManager:
     def __init__(self):
         """Initialize the effects manager."""
         self.explosion_effects: List[ExplosionEffect] = []
-        self.line_effects: List[LineEffect] = []
+        self.line_effects: List[LineExplosionEffect] = []
         
         # Create batch and group for effects
         self.batch = pyglet.graphics.Batch()
@@ -452,13 +452,16 @@ class PygletEffectsManager:
         self.explosion_effects.append(explosion)
     
     def add_line_clear_effect(self, line_y: int) -> None:
-        """Add a line clearing effect.
+        """Add a line clearing explosion effect.
         
         Args:
             line_y: Line index being cleared
         """
         from .constants import BORDER_WIDTH
-        line_effect = LineEffect(line_y, BORDER_WIDTH, BORDER_WIDTH)
+        # Calculate correct board position
+        board_x = BORDER_WIDTH
+        board_y = BORDER_WIDTH
+        line_effect = LineExplosionEffect(line_y, board_x, board_y)
         self.line_effects.append(line_effect)
     
     def add_sparkle_effect(self, x: int, y: int, count: int = 5) -> None:
@@ -485,7 +488,7 @@ class PygletEffectsManager:
             if effect.update(dt)
         ]
         
-        # Update line effects
+        # Update line explosion effects
         self.line_effects = [
             effect for effect in self.line_effects
             if effect.update(dt)
@@ -513,7 +516,7 @@ class PygletEffectsManager:
         for effect in self.explosion_effects:
             shapes_list.extend(effect.draw(batch, group))
         
-        # Draw line effects
+        # Draw line explosion effects
         for effect in self.line_effects:
             shapes_list.extend(effect.draw(batch, group))
         
@@ -531,3 +534,116 @@ class PygletEffectsManager:
         """Clear all active effects."""
         self.explosion_effects.clear()
         self.line_effects.clear()
+
+
+def create_explosion_effect(x: float, y: float, color: Tuple[int, int, int, int] = None, 
+                          intensity: float = 1.0) -> ExplosionEffect:
+    """独立的爆炸特效创建函数。
+    
+    这是一个便捷函数，用于在游戏中的任何位置创建爆炸效果。
+    可以用于方块消除、特殊技能、碰撞等各种场景。
+    
+    Args:
+        x: 爆炸中心X坐标（像素坐标）
+        y: 爆炸中心Y坐标（像素坐标）
+        color: 爆炸颜色，如果为None则使用默认白色
+        intensity: 爆炸强度，范围0.1-3.0，影响粒子数量和速度
+        
+    Returns:
+        ExplosionEffect: 创建的爆炸效果对象
+        
+    Example:
+        # 创建一个红色的强烈爆炸
+        explosion = create_explosion_effect(100, 200, COLORS['RED'], 2.0)
+        
+        # 创建一个默认的小爆炸
+        explosion = create_explosion_effect(150, 250)
+    """
+    if color is None:
+        color = COLORS['WHITE']
+    
+    # 限制强度范围
+    intensity = max(0.1, min(3.0, intensity))
+    
+    return ExplosionEffect(x, y, color, intensity)
+
+
+def create_line_explosion_chain(line_y: int, board_x: int, board_y: int, 
+                               delay_between_explosions: float = 0.05) -> LineExplosionEffect:
+    """独立的行消除爆炸链特效创建函数。
+    
+    创建一个沿着指定行的连锁爆炸效果，从左到右依次引爆。
+    
+    Args:
+        line_y: 行索引
+        board_x: 游戏板X坐标（像素）
+        board_y: 游戏板Y坐标（像素）
+        delay_between_explosions: 每个爆炸之间的延迟时间（秒）
+        
+    Returns:
+        LineExplosionEffect: 创建的行爆炸效果对象
+        
+    Example:
+        # 创建快速连锁爆炸
+        line_explosion = create_line_explosion_chain(5, 50, 50, 0.03)
+        
+        # 创建慢速连锁爆炸
+        line_explosion = create_line_explosion_chain(3, 50, 50, 0.1)
+    """
+    effect = LineExplosionEffect(line_y, board_x, board_y)
+    
+    # 自定义爆炸间隔
+    if delay_between_explosions != 0.05:  # 如果不是默认值
+        for i in range(len(effect.explosion_timers)):
+            effect.explosion_timers[i] = i * delay_between_explosions
+    
+    return effect
+
+
+def create_multi_explosion(positions: List[Tuple[float, float]], 
+                          color: Tuple[int, int, int, int] = None,
+                          intensity: float = 1.0,
+                          stagger_delay: float = 0.0) -> List[ExplosionEffect]:
+    """创建多个位置的爆炸效果。
+    
+    在多个位置同时或依次创建爆炸效果，适用于同时消除多个方块的场景。
+    
+    Args:
+        positions: 爆炸位置列表，每个元素为(x, y)坐标
+        color: 爆炸颜色，如果为None则为每个爆炸随机选择颜色
+        intensity: 爆炸强度
+        stagger_delay: 每个爆炸之间的交错延迟（秒），0表示同时爆炸
+        
+    Returns:
+        List[ExplosionEffect]: 创建的爆炸效果列表
+        
+    Example:
+        # 在多个位置同时爆炸
+        positions = [(100, 100), (150, 100), (200, 100)]
+        explosions = create_multi_explosion(positions, COLORS['BLUE'])
+        
+        # 创建交错爆炸
+        explosions = create_multi_explosion(positions, stagger_delay=0.1)
+    """
+    explosions = []
+    
+    for i, (x, y) in enumerate(positions):
+        # 如果没有指定颜色，随机选择
+        explosion_color = color
+        if explosion_color is None:
+            explosion_colors = [
+                COLORS['RED'], COLORS['YELLOW'], COLORS['ORANGE'],
+                COLORS['CYAN'], COLORS['MAGENTA'], COLORS['GREEN']
+            ]
+            explosion_color = random.choice(explosion_colors)
+        
+        explosion = create_explosion_effect(x, y, explosion_color, intensity)
+        
+        # 如果有交错延迟，设置爆炸为非激活状态
+        if stagger_delay > 0:
+            explosion.active = False
+            # 这里需要在使用时手动处理延迟激活
+        
+        explosions.append(explosion)
+    
+    return explosions

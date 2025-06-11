@@ -64,10 +64,10 @@ EFFECT_DURATION = 0.5
 
 # Scoring system
 SCORE_VALUES = {
-    1: 100,   # Single line
-    2: 300,   # Double lines
-    3: 500,   # Triple lines
-    4: 800,   # Tetris (4 lines)
+    1: 10,    # Single line
+    2: 30,    # Double lines
+    3: 50,    # Triple lines
+    4: 100,   # Tetris (4 lines)
 }
 
 # Level progression

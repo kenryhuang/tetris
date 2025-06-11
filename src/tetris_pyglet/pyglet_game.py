@@ -185,13 +185,9 @@ class PygletTetrisGame:
         if not self.current_piece or self.game_over or self.paused:
             return
         
-        # Count lines dropped for scoring
-        lines_dropped = 0
-        while self._move_piece(0, 1):
-            lines_dropped += 1
-        
-        # Add hard drop score (2 points per line)
-        self.score += lines_dropped * 2
+        # Drop to bottom without scoring
+        while self._auto_fall():
+            pass
         
         # Lock the piece immediately
         self._lock_piece()
@@ -202,11 +198,15 @@ class PygletTetrisGame:
         Returns:
             True if piece moved down
         """
-        if self._move_piece(0, 1):
-            # Add soft drop score (1 point per line)
-            self.score += 1
-            return True
-        return False
+        return self._move_piece(0, 1)
+    
+    def _auto_fall(self) -> bool:
+        """Move piece down one line automatically (no scoring).
+        
+        Returns:
+            True if piece moved down
+        """
+        return self._move_piece(0, 1)
     
     def _lock_piece(self) -> None:
         """Lock the current piece to the board."""
@@ -271,8 +271,7 @@ class PygletTetrisGame:
         
         # Calculate score
         line_score = SCORE_VALUES.get(lines_cleared, 0)
-        level_multiplier = self.level
-        self.score += line_score * level_multiplier
+        self.score += line_score
         
         # Check for level up (score-based)
         if self.score >= self.next_level_score:
@@ -385,7 +384,7 @@ class PygletTetrisGame:
             if self.current_piece:
                 # Check if piece should fall
                 if current_time - self.last_fall_time >= self.fall_time:
-                    if not self._move_piece(0, 1):
+                    if not self._auto_fall():
                         # Piece can't move down, start lock delay
                         self.current_piece.is_falling = False
                     else:
