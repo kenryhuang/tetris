@@ -38,6 +38,14 @@ COLORS = {
     'BLUE': (0, 122, 255, 255),            # Apple blue
     'ORANGE': (255, 149, 0, 255),          # Warm orange
     
+    # 不规则方块专用颜色
+    'MAGENTA': (255, 45, 85, 255),         # 洋红色
+    'TEAL': (90, 200, 250, 255),           # 青绿色
+    'LIME': (50, 215, 75, 255),            # 酸橙色
+    'INDIGO': (88, 86, 214, 255),          # 靛蓝色
+    'PINK': (255, 55, 95, 255),            # 粉红色
+    'CORAL': (255, 69, 58, 255),           # 珊瑚色
+    
     # Legacy colors for compatibility
     'BLACK': (0, 0, 0, 255),
     'GRAY': (128, 128, 128, 255),
@@ -53,6 +61,14 @@ PIECE_COLORS = {
     'Z': COLORS['RED'],
     'J': COLORS['BLUE'],
     'L': COLORS['ORANGE'],
+    
+    # 不规则方块颜色
+    'X': COLORS['MAGENTA'],     # 十字形 - 洋红色
+    'U': COLORS['TEAL'],        # U形 - 青绿色
+    'P': COLORS['LIME'],        # P形 - 酸橙色
+    'Y': COLORS['INDIGO'],      # Y形 - 靛蓝色
+    'W': COLORS['PINK'],        # W形 - 粉红色
+    'H': COLORS['CORAL'],       # H形 - 珊瑚色
 }
 
 # Game timing (in seconds for pyglet)

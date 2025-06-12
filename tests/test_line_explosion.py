@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-LineExplosionEffect 独立测试脚本
+RainbowWaveEffect 独立测试脚本
 用于测试和验证行消除爆炸效果的表现
 """
 
@@ -12,11 +12,11 @@ import os
 # 添加项目路径到sys.path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
-from tetris_pyglet.effects import PygletEffectsManager, LineExplosionEffect
+from tetris_pyglet.effects import PygletEffectsManager, RainbowWaveEffect
 from tetris_pyglet.constants import *
 
 class LineExplosionTestWindow(pyglet.window.Window):
-    """LineExplosionEffect测试窗口"""
+    """RainbowWaveEffect测试窗口"""
     
     def __init__(self):
         super().__init__(width=800, height=600, caption="LineExplosion Effect Test")
@@ -69,7 +69,7 @@ class LineExplosionTestWindow(pyglet.window.Window):
         center_x = self.width // 2
         center_y = self.height // 2
         
-        # 创建LineExplosionEffect
+        # 创建RainbowWaveEffect
         # 使用屏幕坐标，确保Y坐标为正数
         board_x = center_x - (BOARD_WIDTH * CELL_SIZE) // 2
         board_y = center_y + (BOARD_HEIGHT // 2 - line_y) * CELL_SIZE
@@ -181,9 +181,9 @@ class LineExplosionTestWindow(pyglet.window.Window):
 # 为PygletEffectsManager添加位置指定的方法
 def add_line_clear_effect_at_position(self, board_x, board_y):
     """在指定位置添加行清除效果"""
-    line_effect = LineExplosionEffect(0, board_x, board_y)  # line_y=0, 使用指定的board坐标
+    line_effect = RainbowWaveEffect(0, board_x, board_y)  # line_y=0, 使用指定的board坐标
     self.line_effects.append(line_effect)
-    print(f"Added LineExplosionEffect at position ({board_x}, {board_y})")
+    print(f"Added RainbowWaveEffect at position ({board_x}, {board_y})")
 
 # 动态添加方法到PygletEffectsManager
 PygletEffectsManager.add_line_clear_effect_at_position = add_line_clear_effect_at_position

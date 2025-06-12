@@ -218,10 +218,8 @@ class PygletTetrisGame:
         
         # Add explosion effects for each block
         for x, y in self.current_piece.get_blocks():
-            if y >= 0:  # Only add effects for visible blocks
-                self.effects_manager.add_explosion_effect(
-                    x, y, self.current_piece.color, 0.8
-                )
+            # Effects removed - only using line_effects now
+            pass
         
         # Check for line clears
         full_lines = self.board.get_full_lines()
@@ -243,7 +241,7 @@ class PygletTetrisGame:
         self.pending_line_clear = True
         self.cleared_lines_data = lines
         self.line_clear_start_time = time.time()
-        
+
         # Start board animation
         self.board.start_line_clear_animation(lines)
         
@@ -251,11 +249,8 @@ class PygletTetrisGame:
         for line_y in lines:
             self.effects_manager.add_line_clear_effect(line_y)
             
-            # Add explosion effects along the line
-            for x in range(self.board.width):
-                if self.board.get_block_at(x, line_y):
-                    self.effects_manager.add_explosion_effect(x, line_y, intensity=1.2)
-    
+            # Explosion effects removed - only using line_effects now
+
     def _complete_line_clear(self) -> None:
         """Complete the line clearing process."""
         if not self.pending_line_clear or not self.cleared_lines_data:
@@ -297,10 +292,7 @@ class PygletTetrisGame:
         # Calculate next level score requirement
         self.next_level_score = int(self.next_level_score * LEVEL_SCORE_MULTIPLIER)
         
-        # Add celebration effects
-        for x in range(self.board.width):
-            for y in range(min(3, self.board.height)):
-                self.effects_manager.add_sparkle_effect(x, y, 3)
+        # Celebration effects removed - only using line_effects now
     
     def _handle_input(self, dt: float) -> None:
         """Handle continuous input with key repeat.

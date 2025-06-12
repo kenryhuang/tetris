@@ -104,64 +104,7 @@ class Particle:
             self.shape.batch = batch
 
 
-class ExplosionEffect:
-    """Explosion effect with particles radiating outward."""
-    
-    def __init__(self, x: float, y: float, color: Tuple[int, int, int]):
-        """Initialize explosion effect.
-        
-        Args:
-            x: Center X position
-            y: Center Y position
-            color: Base color for particles
-        """
-        self.x = x
-        self.y = y
-        self.particles: List[Particle] = []
-        self.active = True
-        
-        # Create explosion particles
-        for _ in range(PARTICLE_COUNT * 2):  # More particles for explosion
-            # Random angle and speed
-            angle = random.uniform(0, 2 * math.pi)
-            speed = random.uniform(*PARTICLE_SPEED) * 50
-            
-            vx = math.cos(angle) * speed
-            vy = math.sin(angle) * speed
-            
-            # Vary the color slightly
-            color_variation = random.randint(-30, 30)
-            particle_color = tuple(
-                max(0, min(255, c + color_variation)) for c in color
-            )
-            
-            life = random.uniform(*PARTICLE_LIFE)
-            size = random.uniform(2, 6)
-            
-            particle = Particle(x, y, vx, vy, particle_color, life, size)
-            self.particles.append(particle)
-    
-    def update(self, dt: float) -> None:
-        """Update all particles in the explosion.
-        
-        Args:
-            dt: Delta time in seconds
-        """
-        for particle in self.particles[:]:
-            particle.update(dt)
-            if not particle.alive:
-                self.particles.remove(particle)
-        
-        self.active = len(self.particles) > 0
-    
-    def draw(self, batch: pyglet.graphics.Batch) -> None:
-        """Draw all particles.
-        
-        Args:
-            batch: Pyglet batch for efficient rendering
-        """
-        for particle in self.particles:
-            particle.draw(batch)
+
 
 
 class LineFlashEffect:
@@ -318,14 +261,7 @@ class PygletEffectsManager:
             flash = LineFlashEffect(line_y, 10, board_x, board_y)  # 10 cells wide
             self.effects.append(flash)
             
-            # Explosion effects at random positions along the line
-            for _ in range(3):  # 3 explosions per line
-                x = board_x + random.randint(1, 9) * CELL_SIZE + CELL_SIZE // 2
-                y = WINDOW_HEIGHT - (board_y + line_y * CELL_SIZE + CELL_SIZE // 2)
-                
-                color = random.choice(EFFECT_COLORS['EXPLOSION'])
-                explosion = ExplosionEffect(x, y, color)
-                self.effects.append(explosion)
+            # Line flash effect only (explosion effects removed)
     
     def add_piece_land_effect(self, piece_blocks: List[Tuple[int, int]], 
                              board_x: int, board_y: int) -> None:
@@ -351,18 +287,8 @@ class PygletEffectsManager:
             center_x: Center X position
             center_y: Center Y position
         """
-        # Multiple colorful explosions
-        colors = EFFECT_COLORS['EXPLOSION'] + EFFECT_COLORS['SPARKLE']
-        
-        for i in range(5):
-            angle = (i / 5) * 2 * math.pi
-            radius = 50
-            x = center_x + math.cos(angle) * radius
-            y = center_y + math.sin(angle) * radius
-            
-            color = random.choice(colors)
-            explosion = ExplosionEffect(x, y, color)
-            self.effects.append(explosion)
+        # Level up effect (explosion effects removed)
+        # Only visual feedback without explosion particles
     
     def update(self, dt: float) -> None:
         """Update all active effects.
