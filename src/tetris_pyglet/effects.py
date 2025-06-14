@@ -435,13 +435,9 @@ class PygletEffectsManager:
     def __init__(self):
         """Initialize the effects manager."""
         self.line_effects: List[RainbowWaveEffect] = []
-        
-        # Create batch and group for effects
-        self.batch = pyglet.graphics.Batch()
-        self.group = pyglet.graphics.Group(order=10)
-        
+        # Remove self.batch and self.group
+        # Effects manager should always use the batch/group provided by the renderer
 
-    
     def add_line_clear_effect(self, line_y: int) -> None:
         """Add a line clearing explosion effect.
         
@@ -454,8 +450,6 @@ class PygletEffectsManager:
         board_y = BORDER_WIDTH
         line_effect = RainbowWaveEffect(line_y, board_x, board_y)
         self.line_effects.append(line_effect)
-    
-
     
     def update(self, dt: float) -> None:
         """Update all effects.
@@ -474,23 +468,18 @@ class PygletEffectsManager:
         """Draw all effects.
         
         Args:
-            batch: Pyglet batch for rendering
-            group: Pyglet group for layering
+            batch: Pyglet batch for rendering (must not be None)
+            group: Pyglet group for layering (must not be None)
             
         Returns:
             List of created shapes
         """
-        if batch is None:
-            batch = self.batch
-        if group is None:
-            group = self.group
-        
+        if batch is None or group is None:
+            raise ValueError("EffectsManager.draw() must be called with a valid batch and group from the renderer.")
         shapes_list = []
-        
         # Draw line explosion effects (now RainbowWaveEffect)
         for effect in self.line_effects:
             shapes_list.extend(effect.draw(batch, group))
-        
         return shapes_list
     
     def has_active_effects(self) -> bool:

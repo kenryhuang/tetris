@@ -13,7 +13,7 @@ from .constants import (
     INITIAL_FALL_TIME, FAST_FALL_TIME, MIN_FALL_TIME, FALL_TIME_DECREASE,
     SCORE_VALUES, LINES_PER_LEVEL, LEVEL_SCORE_BASE,
     LEVEL_SCORE_MULTIPLIER, SPEED_MULTIPLIER, EFFECT_DURATION,
-    KEY_MAPPINGS, ALT_KEY_MAPPINGS, TARGET_FPS
+    KEY_MAPPINGS, ALT_KEY_MAPPINGS, TARGET_FPS, LINE_CLEAR_ANIMATION_TIME
 )
 from .board import Board
 from .piece import Piece
@@ -59,6 +59,11 @@ class PygletTetrisGame:
         # Animation states
         self.game_over_animation_time = 0.0
         self.piece_lock_animation_time = 0.0
+        self.falling_blocks_animation = None
+        self._falling_animation_delay = 0.0
+        self._falling_animation_delay_lines = None
+        self._falling_animation_delay_start_time = None
+        self._just_finished_falling_animation = False  # New flag
         
     def reset_game(self) -> None:
         """Reset the game to initial state."""
@@ -254,36 +259,62 @@ class PygletTetrisGame:
             # Explosion effects removed - only using line_effects now
 
     def _complete_line_clear(self) -> None:
-        """Complete the line clearing process."""
+        """After line clear animation, start a 200ms delay before falling animation."""
         if not self.pending_line_clear or not self.cleared_lines_data:
             return
-        
-        lines_cleared = len(self.cleared_lines_data)
-        
-        # Clear the lines from the board
-        self.board.clear_lines(self.cleared_lines_data)
-        
-        # Update statistics
-        self.lines_cleared += lines_cleared
-        
-        # Calculate score
-        line_score = SCORE_VALUES.get(lines_cleared, 0)
-        self.score += line_score
-        
-        # Check for level up (score-based)
-        if self.score >= self.next_level_score:
-            self._level_up()
-        
-        # Reset line clear state
+        # Start a 200ms delay after animation is fully complete
+        self._falling_animation_delay = 0.2
+        self._falling_animation_delay_lines = self.cleared_lines_data
+        self._falling_animation_delay_start_time = time.time()
         self.pending_line_clear = False
         self.cleared_lines_data = None
-        
-        # Clear locked blocks animation
         self.board.clear_locked_blocks()
-        
+
+    def _start_falling_blocks_animation(self, cleared_lines):
+        """Initialize falling animation for blocks above cleared lines."""
+        # Compute for each block how many lines it needs to fall
+        fall_map = {}  # (x, y): fall_distance
+        cleared_set = set(cleared_lines)
+        for y in range(self.board.height):
+            fall = sum(1 for cl in cleared_lines if y < cl)
+            if fall > 0:
+                for x in range(self.board.width):
+                    if self.board.grid[y][x] is not None:
+                        fall_map[(x, y)] = fall
+        self.falling_blocks_animation = {
+            'fall_map': fall_map,
+            'progress': 0.0,
+            'duration': LINE_CLEAR_ANIMATION_TIME,
+            'cleared_lines': cleared_lines,
+        }
+
+    def _update_falling_blocks_animation(self, dt):
+        if not self.falling_blocks_animation:
+            return False
+        anim = self.falling_blocks_animation
+        anim['progress'] += dt / anim['duration']
+        if anim['progress'] >= 1.0:
+            # Animation done, but don't clear immediately
+            self._finalize_falling_blocks_animation()
+            self._just_finished_falling_animation = True
+            # Do NOT set self.falling_blocks_animation = None here
+            return True
+        return False
+
+    def _finalize_falling_blocks_animation(self):
+        # Actually clear lines and move blocks down
+        cleared_lines = self.falling_blocks_animation['cleared_lines']
+        lines_cleared = len(cleared_lines)
+        self.board.clear_lines(cleared_lines)
+        # Update statistics
+        self.lines_cleared += lines_cleared
+        line_score = SCORE_VALUES.get(lines_cleared, 0)
+        self.score += line_score
+        if self.score >= self.next_level_score:
+            self._level_up()
         # Spawn next piece
         self._spawn_next_piece()
-    
+
     def _level_up(self) -> None:
         """Handle level progression."""
         self.level += 1
@@ -370,11 +401,23 @@ class PygletTetrisGame:
         # Update board animations
         if self.pending_line_clear:
             if self.board.update_line_clear_animation(dt):
-                # Animation complete, finish line clear
+                # Animation complete, start delay before falling animation
                 self._complete_line_clear()
+        elif self._falling_animation_delay > 0.0:
+            # Only start counting delay after animation is fully complete
+            if self._falling_animation_delay_start_time is not None:
+                elapsed = current_time - self._falling_animation_delay_start_time
+                if elapsed >= self._falling_animation_delay:
+                    if self._falling_animation_delay_lines:
+                        self._start_falling_blocks_animation(self._falling_animation_delay_lines)
+                        self._falling_animation_delay_lines = None
+                        self._falling_animation_delay = 0.0
+                        self._falling_animation_delay_start_time = None
+        elif self.falling_blocks_animation:
+            self._update_falling_blocks_animation(dt)
         
         # Handle piece falling
-        if not self.game_over and not self.paused and not self.pending_line_clear:
+        if not self.game_over and not self.paused and not self.pending_line_clear and not self.falling_blocks_animation:
             if self.current_piece:
                 # Check if piece should fall
                 if current_time - self.last_fall_time >= self.fall_time:
@@ -406,17 +449,36 @@ class PygletTetrisGame:
         """Draw the game."""
         # Clear screen
         self.renderer.clear()
+        self.renderer.clear_effect_batch()  # Ensure effect batch is fresh each frame
         
-        # Draw board
-        self.renderer.draw_board(self.board)
+        # Draw board, with skip_lines if in delay or falling animation
+        if self._falling_animation_delay > 0.0 and self._falling_animation_delay_lines:
+            self.renderer.draw_board(self.board, None, self._falling_animation_delay_lines)
+        elif self.falling_blocks_animation:
+            self.renderer.draw_board(self.board, self.falling_blocks_animation, self.falling_blocks_animation['cleared_lines'])
+        else:
+            self.renderer.draw_board(self.board)
         
         # Draw ghost piece
-        if self.ghost_piece and not self.pending_line_clear:
+        if (
+            self.ghost_piece
+            and not self.pending_line_clear
+            and not self._falling_animation_delay
+            and not self.falling_blocks_animation
+        ):
             self.renderer.draw_piece(self.ghost_piece, ghost=True)
         
         # Draw current piece
-        if self.current_piece and not self.pending_line_clear:
+        if (
+            self.current_piece
+            and not self.pending_line_clear
+            and not self._falling_animation_delay
+            and not self.falling_blocks_animation
+        ):
             self.renderer.draw_piece(self.current_piece)
+        
+        # Draw effects ON TOP of board and pieces
+        self.effects_manager.draw(self.renderer.effect_batch, self.renderer.effect_group)
         
         # Calculate game time
         game_time = int(time.time() - self.game_start_time) if hasattr(self, 'game_start_time') else 0
@@ -424,12 +486,6 @@ class PygletTetrisGame:
         # Draw UI
         self.renderer.draw_ui(self.score, self.level, self.lines_cleared, self.next_piece, 
                              self.current_piece, game_time)
-        
-        # Draw effects
-        active_effects = len(self.effects_manager.line_effects)
-        #if active_effects > 0:
-            #print(f"Drawing {active_effects} active effects")
-        self.effects_manager.draw(self.renderer.effect_batch, self.renderer.effect_group)
         
         # Draw game over screen
         if self.game_over:
@@ -441,6 +497,11 @@ class PygletTetrisGame:
         
         # Render all batches
         self.renderer.draw()
+        
+        # After drawing, clear animation state if just finished
+        if self._just_finished_falling_animation:
+            self.falling_blocks_animation = None
+            self._just_finished_falling_animation = False
     
     def on_key_press(self, symbol: int, modifiers: int) -> None:
         """Handle key press events.

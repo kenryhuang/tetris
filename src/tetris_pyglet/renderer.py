@@ -248,21 +248,24 @@ class PygletRenderer:
             )
             line.opacity = grid_color[3]
     
-    def draw_board(self, board: Board) -> None:
-        """Draw the game board.
-        
-        Args:
-            board: The game board to draw
-        """
+    def draw_board(self, board: Board, falling_animation: dict = None, skip_lines: list = None) -> None:
+        """Draw the game board, with optional falling animation and lines to skip (not render)."""
         self._ensure_static_elements_created()
         self.dynamic_shapes.clear()
-        
-        # Draw all board blocks
+        anim = falling_animation
+        skip_set = set(skip_lines) if skip_lines else set()
         for y in range(BOARD_HEIGHT):
+            if y in skip_set:
+                continue
             for x in range(BOARD_WIDTH):
                 color = board.get_block_at(x, y)
                 if color is not None:
-                    self._draw_board_block(board, x, y, color)
+                    fall_offset = 0.0
+                    if anim and (x, y) in anim['fall_map']:
+                        fall_dist = anim['fall_map'][(x, y)]
+                        progress = min(anim['progress'], 1.0)
+                        fall_offset = fall_dist * progress * CELL_SIZE
+                    self._draw_board_block(board, x, y, color, fall_offset)
     
     def _ensure_static_elements_created(self) -> None:
         """Ensure static elements are created only once."""
@@ -271,17 +274,10 @@ class PygletRenderer:
             self._draw_grid()
             self._static_elements_created = True
     
-    def _draw_board_block(self, board: Board, x: int, y: int, color: Tuple[int, int, int, int]) -> None:
-        """Draw a single block on the board with appropriate effects.
-        
-        Args:
-            board: The game board
-            x: Block x coordinate
-            y: Block y coordinate
-            color: Block color
-        """
+    def _draw_board_block(self, board: Board, x: int, y: int, color: Tuple[int, int, int, int], fall_offset: float = 0.0) -> None:
+        """Draw a single block on the board with appropriate effects and optional vertical offset."""
         pixel_x, pixel_y = self._get_board_pixel_position(x, y)
-        
+        pixel_y -= fall_offset
         if board.is_line_clearing(y):
             self._draw_line_clearing_block(pixel_x, pixel_y, color, board.get_line_clear_progress(y))
         else:
@@ -302,26 +298,18 @@ class PygletRenderer:
         return pixel_x, pixel_y
     
     def _draw_line_clearing_block(self, pixel_x: int, pixel_y: int, color: Tuple[int, int, int, int], progress: float) -> None:
-        """Draw a block with line clearing animation.
-        
-        Args:
-            pixel_x: Pixel x position
-            pixel_y: Pixel y position
-            color: Block color
-            progress: Animation progress (0.0 to 1.0)
-        """
-        # Fade out and scale effect
-        alpha = int(255 * (1.0 - progress))
-        scale = 1.0 - progress * 0.3
+        """Draw a block with a simple line clearing animation: shrink and flash before disappearing."""
+        # Shrink size
+        scale = 1.0 - progress
         size = CELL_SIZE * scale
         offset = (CELL_SIZE - size) / 2
-        
+        # Flashing alpha (flicker between 0.3 and 1.0)
+        flash = 0.7 * (0.5 + 0.5 * math.sin(progress * 12 * math.pi)) + 0.3
+        alpha = int(color[3] * (1.0 - progress) * flash)
         color_with_alpha = (*color[:3], alpha)
-        glow = 0.0 * (1.0 - progress)  # Reduce glow during clearing
-        
         self._draw_cell(
             pixel_x + offset, pixel_y + offset,
-            color_with_alpha, size, glow
+            color_with_alpha, size, 0.0
         )
     
     def _draw_normal_block(self, board: Board, pixel_x: int, pixel_y: int, color: Tuple[int, int, int, int], x: int, y: int) -> None:
@@ -813,3 +801,7 @@ class PygletRenderer:
         """Clean up resources."""
         # Pyglet handles most cleanup automatically
         pass
+
+    def clear_effect_batch(self) -> None:
+        """Clear the effect batch so it can be redrawn this frame."""
+        self.effect_batch = pyglet.graphics.Batch()

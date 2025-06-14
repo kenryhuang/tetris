@@ -5,13 +5,13 @@
 
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 import pyglet
 import time
-from src.tetris_pyglet.pyglet_game import PygletTetrisGame
-from src.tetris_pyglet.effects import PygletEffectsManager
-from src.tetris_pyglet.renderer import PygletRenderer
+from tetris_pyglet.pyglet_game import PygletTetrisGame
+from tetris_pyglet.effects import PygletEffectsManager
+from tetris_pyglet.renderer import PygletRenderer
 
 class EffectsTestGame(PygletTetrisGame):
     """测试特效的游戏类"""
@@ -45,44 +45,31 @@ class EffectsTestGame(PygletTetrisGame):
             
     def draw(self):
         """重写draw方法以添加更多调试信息"""
-        # 清屏
         self.renderer.clear()
-        
-        # 绘制游戏元素
+        self.renderer.clear_effect_batch()
+
+        # Draw board and pieces first
         self.renderer.draw_board(self.board)
-        
-        if self.current_piece:
+        if self.ghost_piece and not self.pending_line_clear:
+            self.renderer.draw_piece(self.ghost_piece, ghost=True)
+        if self.current_piece and not self.pending_line_clear:
             self.renderer.draw_piece(self.current_piece)
-        
-        if self.next_piece:
-            # 在侧边栏绘制预览方块
-            preview_x = 500  # 侧边栏位置
-            preview_y = 400  # 预览位置
-            self.renderer.draw_preview_piece(self.next_piece, preview_x, preview_y)
-        
-        # 绘制UI
+
+        # Draw effects ON TOP of board and pieces
+        self.effects_manager.draw(self.renderer.effect_batch, self.renderer.effect_group)
+
+        # Draw UI
         game_time = int(time.time() - self.game_start_time) if hasattr(self, 'game_start_time') else 0
         self.renderer.draw_ui(self.score, self.level, self.lines_cleared, self.next_piece, 
                              self.current_piece, game_time)
-        
+
+        # Draw overlays
         if self.game_over:
-            self.renderer.draw_game_over()
-        
-        if self.paused:
-            self.renderer.draw_pause_overlay()
-        
-        # 绘制特效 - 添加详细调试信息
-        active_effects = len(self.effects_manager.line_effects)
-        if active_effects > 0:
-            print(f"正在绘制 {active_effects} 个活跃特效")
-            for i, effect in enumerate(self.effects_manager.line_effects):
-                print(f"  特效 {i}: 活跃={effect.active}, 进度={effect.progress:.2f}")
-        
-        # 调用特效绘制
-        shapes = self.effects_manager.draw(self.renderer.effect_batch, self.renderer.effect_group)
-        print(f"特效绘制返回了 {len(shapes)} 个形状")
-        
-        # 绘制所有批次
+            self.renderer.draw_game_over(self.score)
+        if self.paused and not self.game_over:
+            self.renderer.draw_pause_screen()
+
+        # Render all batches
         self.renderer.draw()
 
 def main():
