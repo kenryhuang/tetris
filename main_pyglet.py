@@ -18,41 +18,34 @@ from tetris_pyglet.pyglet_game import PygletTetrisGame
 from tetris_pyglet.constants import WINDOW_WIDTH, WINDOW_HEIGHT
 
 
-class TetrisWindow(pyglet.window.Window):
-    """Main window class for the Pyglet Tetris game."""
+def setup_game():
+    """Setup and return the game instance."""
+    # Create game instance (it will create its own window)
+    game = PygletTetrisGame()
     
-    def __init__(self):
-        """Initialize the game window."""
-        super().__init__(
-            width=WINDOW_WIDTH,
-            height=WINDOW_HEIGHT,
-            caption="Tetris - Pyglet Edition",
-            resizable=False,
-            vsync=True
-        )
-        
-        # Initialize the game with this window
-        self.game = PygletTetrisGame(self)
-        
-        # Schedule game update
-        pyglet.clock.schedule_interval(self.update, 1/60.0)  # 60 FPS
-        
-    def on_draw(self):
-        """Handle window drawing."""
-        self.clear()
-        self.game.draw()
-        
-    def update(self, dt):
-        """Update game state."""
-        self.game.update(dt)
-        
-    def on_key_press(self, symbol, modifiers):
-        """Handle key press events."""
-        self.game.on_key_press(symbol, modifiers)
-        
-    def on_key_release(self, symbol, modifiers):
-        """Handle key release events."""
-        self.game.on_key_release(symbol, modifiers)
+    # Get the window from the game
+    window = game.get_window()
+    
+    # Set up event handlers
+    @window.event
+    def on_draw():
+        game.draw()
+    
+    @window.event
+    def on_key_press(symbol, modifiers):
+        game.on_key_press(symbol, modifiers)
+    
+    @window.event
+    def on_key_release(symbol, modifiers):
+        game.on_key_release(symbol, modifiers)
+    
+    # Schedule game update
+    def update(dt):
+        game.update(dt)
+    
+    pyglet.clock.schedule_interval(update, 1/60.0)  # 60 FPS
+    
+    return game, window
 
 
 def main():
@@ -76,9 +69,9 @@ def main():
     print()
     
     try:
-        # Create and run the game window
+        # Create and setup the game
         print("Creating game window...")
-        window = TetrisWindow()
+        game, window = setup_game()
         print("Window created successfully")
         print("Starting game loop...")
         pyglet.app.run()

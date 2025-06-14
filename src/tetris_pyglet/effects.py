@@ -198,7 +198,10 @@ class RainbowWaveEffect:
         self.active = True
         
         # Calculate line position in pixels
+        # Match the coordinate system used in renderer: y=0 is bottom of board, y=19 is top
+        # Use the same formula as renderer._get_pixel_coords
         self.pixel_y = board_y + (BOARD_HEIGHT - 1 - line_y) * CELL_SIZE
+        print(f"Effect for line {line_y}: board_y={board_y}, pixel_y={self.pixel_y}, BOARD_HEIGHT={BOARD_HEIGHT}, CELL_SIZE={CELL_SIZE}")
         
         # Wave properties
         self.wave_center = BOARD_WIDTH // 2
@@ -353,6 +356,7 @@ class RainbowWaveEffect:
         
         if not self.active:
             return shapes_list
+
         
         # Draw wave effect
         wave_alpha = int(255 * (1.0 - self.progress) * 0.8)

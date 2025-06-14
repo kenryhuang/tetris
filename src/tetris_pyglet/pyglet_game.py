@@ -247,7 +247,9 @@ class PygletTetrisGame:
         
         # Add line clear effects
         for line_y in lines:
+            print(f"Adding line clear effect for line {line_y}")
             self.effects_manager.add_line_clear_effect(line_y)
+            print(f"Effects manager now has {len(self.effects_manager.line_effects)} effects")
             
             # Explosion effects removed - only using line_effects now
 
@@ -424,6 +426,9 @@ class PygletTetrisGame:
                              self.current_piece, game_time)
         
         # Draw effects
+        active_effects = len(self.effects_manager.line_effects)
+        #if active_effects > 0:
+            #print(f"Drawing {active_effects} active effects")
         self.effects_manager.draw(self.renderer.effect_batch, self.renderer.effect_group)
         
         # Draw game over screen

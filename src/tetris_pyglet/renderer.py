@@ -805,8 +805,9 @@ class PygletRenderer:
     def draw(self) -> None:
         """Draw all batches."""
         self.main_batch.draw()
-        self.ui_batch.draw()
         self.effect_batch.draw()
+        self.ui_batch.draw()
+        
     
     def cleanup(self) -> None:
         """Clean up resources."""
