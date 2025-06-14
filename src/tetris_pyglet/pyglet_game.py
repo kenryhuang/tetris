@@ -284,7 +284,7 @@ class PygletTetrisGame:
         self.falling_blocks_animation = {
             'fall_map': fall_map,
             'progress': 0.0,
-            'duration': LINE_CLEAR_ANIMATION_TIME,
+            'duration': LINE_CLEAR_ANIMATION_TIME * 0.7,  # 30% faster
             'cleared_lines': cleared_lines,
         }
 
