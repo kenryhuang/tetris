@@ -221,11 +221,6 @@ class PygletTetrisGame:
         # Place piece on board
         self.board.place_piece(self.current_piece)
         
-        # Add explosion effects for each block
-        for x, y in self.current_piece.get_blocks():
-            # Effects removed - only using line_effects now
-            pass
-        
         # Check for line clears
         full_lines = self.board.get_full_lines()
         if full_lines:
@@ -250,13 +245,6 @@ class PygletTetrisGame:
         # Start board animation
         self.board.start_line_clear_animation(lines)
         
-        # Add line clear effects
-        for line_y in lines:
-            print(f"Adding line clear effect for line {line_y}")
-            self.effects_manager.add_line_clear_effect(line_y)
-            print(f"Effects manager now has {len(self.effects_manager.line_effects)} effects")
-            
-            # Explosion effects removed - only using line_effects now
 
     def _complete_line_clear(self) -> None:
         """After line clear animation, start a 200ms delay before falling animation."""
